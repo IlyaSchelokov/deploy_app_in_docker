@@ -1,0 +1,65 @@
+services:
+
+  elasticsearch:
+    image: elasticsearch:8.17.0
+    container_name: elasticsearch
+    hostname: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 10s
+      retries: 15
+      timeout: 5s
+    ports:
+      - 9200:9200
+    networks:
+      - my-network
+
+  fluentd:
+    build:
+      context: ./fluentd
+      dockerfile: Dockerfile
+    container_name: fluent
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    hostname: fluent
+    volumes:
+      - ./fluentd/conf:/fluentd/etc
+    environment:
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    networks:
+      - my-network
+
+  kibana:
+    image: kibana:8.17.0 #(!)
+    depends_on:
+      - elasticsearch
+    hostname: kibana
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - NODE_OPTIONS=--max-old-space-size=512
+    mem_limit: 1512m
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        fluentd-async-connect: "true"
+    ports:
+      - "5601:5601" #(!)
+    networks:
+      - my-network
+
+networks:
+  my-network:
+    name: traefik_proxy
+    driver: bridge #(!)
+    attachable: true

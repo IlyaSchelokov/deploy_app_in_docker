@@ -51,3 +51,9 @@
 - efk.compose.yml - EFK-стек для сбора логов с приложений
 
 Должен присутствовать Dockerfile, используемый для сборки образа с приложением
+
+### 3. Развертывание:
+```bash
+docker-compose -f efk.compose.yml up -d --build
+docker-compose -f app.compose.yml up -d --build
+```
